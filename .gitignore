@@ -1,0 +1,10 @@
+# Node
+node_modules/
+
+# Environment files
+.env
+
+# MongoDB local database
+backend/data/db/
+
+
