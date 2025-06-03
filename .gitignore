@@ -5,6 +5,6 @@ node_modules/
 .env
 
 # MongoDB local database
-backend/data/db/
+data/db/
 
 
