@@ -4,25 +4,51 @@ import userModel from "../models/userModel.js";
 
 // User registration controller function
 export const register = async (req, res) => {
-  const { name, email, password } = req.body;
-  if (!name || !email || !password) {
+const {
+    name,
+    email,
+    phone,
+    password,
+    role,
+    servicesOffered,
+    experienceYears,
+    availability,
+    serviceDocs,
+  } = req.body;
+
+  if (!name || !email ||!phone || !password || !role) {
     return res.json({ success: false, message: "Missing Details" });
   }
   try {
     const existingUser = await userModel.findOne({ email });
 
     if (existingUser) {
-      return res.json({ success: false, message: "User already exist" });
+      return res.json({ success: false, message: "User already exists" });
     }
 
     // encrypt the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new userModel({ name, email, password: hashedPassword });
+    const newUserData = {
+      name,
+      email,
+      phone,
+      password: hashedPassword,
+      role,
+    };
+
+    if (role === "provider") {
+      newUserData.servicesOffered = servicesOffered;
+      newUserData.experienceYears = experienceYears;
+      newUserData.availability = availability;
+      newUserData.serviceDocs = serviceDocs; 
+    }
+
+    const user = new userModel(newUserData);
     await user.save();
 
     // token generation
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    const token = jwt.sign({ id: user._id ,role:user.role}, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
@@ -33,7 +59,7 @@ export const register = async (req, res) => {
       // 7 day expiry for cookie (in milliseconds)
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    return res.json({ success: true });
+    return res.json({ success: true ,user, message: "User registered successfully" });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
@@ -61,9 +87,10 @@ export const login = async (req, res) => {
     }
 
     // token generation for authentication
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+    expiresIn: "7d",
+  });
+
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -72,7 +99,7 @@ export const login = async (req, res) => {
       // 7 day expiry for cookie (in milliseconds)
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    return res.json({ success: true });
+    return res.json({ success: true ,user, message: "User logged in successfully" });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }

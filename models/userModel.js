@@ -1,5 +1,30 @@
 import mongoose from "mongoose";
 
+const SERVICES = [
+  'Home Cleaning',
+  'Physiotherapy',
+  'Massage',
+  'MakeUp',
+  'Hairstyle',
+  'Cooking',
+  'Pest Control',
+  'Painting',
+  'Waterproofing',
+  'AC Repair',
+  'Electrician',
+  'Plumber',
+  'Carpenter',
+  'Smart Device Repair',
+  'IT Support',
+  'Medical Lab Tests',
+  'Nutritionist',
+  'Photography',
+  'Car Cleaning',
+  'Tutoring',
+  'Mounting',
+  'Lifting'
+];
+
 // User Schema
 const userSchema = new mongoose.Schema({
   name: {
@@ -9,8 +34,11 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     required: true,
-    unique: true,
-    // validate:[validator.isEmail,"Email is required"]
+    unique: true
+  },
+  phone:{
+    type: String,
+    required: true
   },
   password: {
     type: String,
@@ -36,21 +64,22 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // phone:{
-  //     type:String,
-  //     required:true,
-  // },
-  // role:{
-  //     type:String,
-  //     required:[true,"User role is required"],
-  //     enum:["Customer","Service Provider","Admin"]
-  // },
+  
+  role:{
+      type:String,
+      enum:["customer","provider","admin"],
+      required:true,
+  },
 
-  //this is only for service provider
-  // serviceCategory:{
-  //     type:String,
-  // }
-});
+  // Provider-specific fields
+  servicesOffered: [{ type: String, enum: SERVICES }],
+  experienceYears: Number,
+  availability: String,
+  serviceDocs: [String],
+  }, { timestamps: true } 
+);
+
+export { SERVICES };   
 
 // User Model
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);
