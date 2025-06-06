@@ -72,7 +72,7 @@ const userSchema = new mongoose.Schema({
   },
 
   // Provider-specific fields
-  servicesOffered: [{ type: String, enum: SERVICES }],
+  servicesOffered: [{ type: String, enum: SERVICES, default: undefined }],
   experienceYears: Number,
   availability: String,
   serviceDocs: [String],
