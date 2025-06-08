@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import authRouter from './routes/authRoute.js';
 import cookieParser from 'cookie-parser';
+import userRouter from './routes/userRoute.js';
 
 
 dotenv.config();
@@ -24,6 +25,8 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 app.use('/api/auth',authRouter);
+app.use('/api/user',userRouter);
+
 
 // Connect to MongoDB
 mongoose
