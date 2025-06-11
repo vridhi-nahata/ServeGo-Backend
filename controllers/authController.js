@@ -66,12 +66,12 @@ const {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "Welcome to ServeGo",
-      text: `Hello ${user.name},\n\nThank you for registering with us! We're excited to have you on board.\n\nBest regards,\nYour Service Team`,
+      text: `Hello ${user.name},\n\nThank you for registering with us! We're excited to have you on board.\n\nBest regards,\nThe ServeGo Team`,
     };
     await transporter.sendMail(mailOptions);
     console.log("Email sent successfully");
 
-    return res.json({ success: true ,user, message: "User registered successfully" });
+    return res.json({ success: true ,user, message: "Registered successfully" });
   } 
   catch (error) {
     return res.json({ success: false, message: error.message });
@@ -113,7 +113,7 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ success: true ,user, message: "User logged in successfully" });
+    return res.json({ success: true ,user, message: "Logged in successfully" });
   } 
   catch (error) {
     return res.json({ success: false, message: error.message });
@@ -249,6 +249,33 @@ export const sendResetOtp = async (req, res) => {
     await transporter.sendMail(mailOptions);
     
     return res.json({ success: true, message: "Password reset OTP sent on email." });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+// Verify Reset OTP before allowing to change password
+export const verifyResetOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  if (!email || !otp) {
+    return res.json({ success: false, message: "OTP is required" });
+  }
+
+  try {
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.json({ success: false, message: "User not found" });
+    }
+
+    if (user.resetOtp !== otp) {
+      return res.json({ success: false, message: "Incorrect OTP" });
+    }
+
+    if (Date.now() > user.resetOtpExpireAt) {
+      return res.json({ success: false, message: "OTP expired" });
+    }
+    return res.json({ success: true, message: "OTP verified successfully" });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }

@@ -1,7 +1,8 @@
 import express from "express";
-import {register,login,logout,verifyEmail,verifyOtp,isAuthenticated, sendResetOtp, resetPassword} from "../controllers/authController.js";
+import {register,login,logout,verifyEmail,verifyOtp,isAuthenticated, sendResetOtp,verifyResetOtp, resetPassword} from "../controllers/authController.js";
 import userAuth from "../middlewares/authMiddleware.js";
 import transporter from "../utils/nodemailer.js";
+import { getUserData } from "../controllers/userController.js";
 
 // create authRouter
 const authRouter = express.Router();
@@ -24,10 +25,14 @@ authRouter.post("/send-verify-otp", userAuth, verifyEmail);
 // Verify email using OTP Route
 authRouter.post("/verify-account", userAuth, verifyOtp);
 // Check if user is authenticated
-authRouter.post("/is-auth", userAuth, isAuthenticated);
+authRouter.get("/is-auth", userAuth, isAuthenticated);
 // Send password reset OTP Route
 authRouter.post("/send-reset-otp", sendResetOtp);
+//Verify reset OTP Route
+authRouter.post("/verify-reset-otp", verifyResetOtp);
 //Reset password Route
 authRouter.post("/reset-password", resetPassword);
+// Get user data Route
+authRouter.get("/data", userAuth, getUserData);
 
 export default authRouter;

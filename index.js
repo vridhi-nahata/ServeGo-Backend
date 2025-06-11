@@ -14,8 +14,10 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
+const allowedOrigins=['http://localhost:5173','http://localhost:5174','http://localhost:5175'];
+
 // Middlewares
-app.use(cors({credentials:true}));
+app.use(cors({origin:allowedOrigins,credentials:true}));
 app.use(express.json());
 app.use(morgan('dev'));
 app.use(cookieParser());
