@@ -1,11 +1,12 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
-import transporter from "../utils/nodemailer.js"
+import pendingRegistration from "../models/pendingRegistrationModel.js";
+import transporter from "../utils/nodemailer.js";
 
-// User registration controller function
-export const register = async (req, res) => {
-const {
+// Send email verification OTP controller function
+export const sendRegistrationOtp = async (req, res) => {
+  const {
     name,
     email,
     phone,
@@ -17,41 +18,120 @@ const {
     serviceDocs,
   } = req.body;
 
-  if (!name || !email ||!phone || !password || !role) {
-    return res.json({ success: false, message: "Missing Details" });
+  if (!name || !email || !phone || !password || !role) {
+    return res.json({ success: false, message: "Missing required fields" });
   }
+
   try {
     const existingUser = await userModel.findOne({ email });
-
     if (existingUser) {
       return res.json({ success: false, message: "User already exists" });
     }
 
+    // Generate a 6-digit verification otp
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+    // Remove any existing pending registration for this email
+    await pendingRegistration.deleteOne({ email });
+
+    await pendingRegistration.create({
+      email,
+      data: {
+        name,
+        email,
+        phone,
+        password,
+        role,
+        servicesOffered,
+        experienceYears,
+        availability,
+        serviceDocs,
+      },
+      otp,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min from now
+    });
+
+    // Send OTP via email
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Email Verification OTP",
+      text: `Hello ${name},\n\nYour email verification OTP is: ${otp}.\n\nIt is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nServeGo Team`,
+    };
+    await transporter.sendMail(mailOptions);
+
+    return res.json({
+      success: true,
+      otp,
+      message: "Verification OTP sent to your email.",
+    });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+// User final registration controller function
+export const finalizeRegistration = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const pending = await pendingRegistration.findOne({ email });
+    if (!pending)
+      return res.json({ success: false, message: "No OTP request found" });
+
+    if (Date.now() > pending.expiresAt.getTime()) {
+      await pendingRegistration.deleteOne({ email });
+      return res.json({ success: false, message: "OTP expired" });
+    }
+    if (pending.otp !== otp)
+      return res.json({ success: false, message: "Incorrect OTP" });
+
+    const existingUser = await userModel.findOne({ email });
+    if (existingUser) {
+      await pendingRegistration.deleteOne({ email });
+      return res.json({ success: false, message: "User already exists" });
+    }
+
+
+    const {
+      name,
+      phone,
+      password,
+      role,
+      servicesOffered,
+      experienceYears,
+      availability,
+      serviceDocs,
+    } = pending.data;
+
     // encrypt the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const newUserData = {
+    const newUser = new userModel({
       name,
       email,
       phone,
       password: hashedPassword,
       role,
-    };
+      isAccountVerified: true,
+      ...(role === "provider" && {
+        servicesOffered,
+        experienceYears,
+        availability,
+        serviceDocs,
+      }),
+    });
 
-    if (role === "provider") {
-      newUserData.servicesOffered = servicesOffered;
-      newUserData.experienceYears = experienceYears;
-      newUserData.availability = availability;
-      newUserData.serviceDocs = serviceDocs; 
-    }
-
-    const user = new userModel(newUserData);
-    await user.save();
+    await newUser.save();
 
     // token generation
-    const token = jwt.sign({ id: user._id ,role:user.role}, process.env.JWT_SECRET, {
-      expiresIn: "7d",
-    });
+    const token = jwt.sign(
+      { id: newUser._id, role: newUser.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -64,16 +144,20 @@ const {
     // Sending welcome email
     const mailOptions = {
       from: process.env.SENDER_EMAIL,
-      to: user.email,
+      to: newUser.email,
       subject: "Welcome to ServeGo",
-      text: `Hello ${user.name},\n\nThank you for registering with us! We're excited to have you on board.\n\nBest regards,\nThe ServeGo Team`,
+      text: `Hello ${newUser.name},\n\nThank you for registering with ServeGo! We're excited to have you on board.\n\nBest regards,\nServeGo Team`,
     };
     await transporter.sendMail(mailOptions);
     console.log("Email sent successfully");
 
-    return res.json({ success: true ,user, message: "Registered successfully" });
-  } 
-  catch (error) {
+    await pendingRegistration.deleteOne({ email });
+    return res.json({
+      success: true,
+      user:newUser,
+      message: "Registered successfully",
+    });
+  } catch (error) {
     return res.json({ success: false, message: error.message });
   }
 };
@@ -100,10 +184,13 @@ export const login = async (req, res) => {
     }
 
     // token generation for authentication
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
-
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -113,9 +200,8 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({ success: true ,user, message: "Logged in successfully" });
-  } 
-  catch (error) {
+    return res.json({ success: true, user, message: "Logged in successfully" });
+  } catch (error) {
     return res.json({ success: false, message: error.message });
   }
 };
@@ -135,40 +221,6 @@ export const logout = async (req, res) => {
   }
 };
 
-// Send email verification OTP controller function
-export const verifyEmail = async (req, res) => {
-  try {
-    const user = await userModel.findById( req.user.id);
-    if (!user) {
-      return res.json({ success: false, message: "User not found" });
-    }
-
-    if(user.isAccountVerified) {
-      return res.json({ success: false, message: "Account already verified" });
-    }
-
-    // Generate a 6-digit verification otp
-    const otp =String(Math.floor(100000 + Math.random() * 900000));
-    // Save the otp to the user document  
-    user.verifyOtp = otp; 
-    user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes   
-    await user.save();
-
-    // Send verification email
-    const mailOptions = {
-      from: process.env.SENDER_EMAIL,
-      to: user.email,
-      subject: "Email Verification OTP",
-      text: `Hello ${user.name || 'User'},\n\nYour verification OTP is: ${otp}.\n\nIt is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nServeGo Team`,
-    };
-    await transporter.sendMail(mailOptions);
-    
-    return res.json({ success: true, message: "Verification OTP sent on email." });
-  } catch (error) {
-    return res.json({ success: false, message: error.message });
-  }
-};
-
 // Verify OTP controller function
 export const verifyOtp = async (req, res) => {
   const { otp } = req.body;
@@ -176,7 +228,7 @@ export const verifyOtp = async (req, res) => {
     return res.json({ success: false, message: "OTP is required" });
   }
   try {
-    const user = await userModel.findById(req.user.id );
+    const user = await userModel.findById(req.user.id);
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
@@ -244,11 +296,16 @@ export const sendResetOtp = async (req, res) => {
       from: process.env.SENDER_EMAIL,
       to: user.email,
       subject: "Password Reset OTP",
-      text: `Hello ${user.name || 'User'},\n\nYour password reset OTP is: ${otp}.\n\nIt is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nServeGo Team`,
+      text: `Hello ${
+        user.name || "User"
+      },\n\nYour password reset OTP is: ${otp}.\n\nIt is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nServeGo Team`,
     };
     await transporter.sendMail(mailOptions);
-    
-    return res.json({ success: true, message: "Password reset OTP sent on email." });
+
+    return res.json({
+      success: true,
+      message: "Password reset OTP sent on email.",
+    });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
@@ -285,21 +342,24 @@ export const verifyResetOtp = async (req, res) => {
 export const resetPassword = async (req, res) => {
   const { email, otp, newPassword } = req.body;
   if (!email || !otp || !newPassword) {
-    return res.json({ success: false, message: "Email, OTP and new password are required" });
+    return res.json({
+      success: false,
+      message: "Email, OTP and new password are required",
+    });
   }
   try {
     const user = await userModel.findOne({ email });
     if (!user) {
       return res.json({ success: false, message: "User not found" });
-    }   
+    }
     // Check if the OTP is entered
-    if (user.resetOtp === "") {	
+    if (user.resetOtp === "") {
       return res.json({ success: false, message: "OTP is required" });
-    }    
+    }
     // Check if the OTP is correct
     if (user.resetOtp !== otp) {
       return res.json({ success: false, message: "Incorrect OTP" });
-    }   
+    }
     // Check if the OTP is expired
     if (Date.now() > user.resetOtpExpireAt) {
       return res.json({ success: false, message: "OTP expired" });
@@ -310,9 +370,11 @@ export const resetPassword = async (req, res) => {
     user.resetOtp = "";
     user.resetOtpExpireAt = 0;
     await user.save();
-    return res.json({ success: true, message: "Password has been reset successfully" });
-  }
-  catch (error) {
+    return res.json({
+      success: true,
+      message: "Password has been reset successfully",
+    });
+  } catch (error) {
     return res.json({ success: false, message: error.message });
   }
-}
+};
