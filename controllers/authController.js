@@ -16,6 +16,7 @@ export const sendRegistrationOtp = async (req, res) => {
     experienceYears,
     availability,
     serviceDocs,
+    avatarUrl,
   } = req.body;
 
   if (!name || !email || !phone || !password || !role) {
@@ -46,6 +47,7 @@ export const sendRegistrationOtp = async (req, res) => {
         experienceYears,
         availability,
         serviceDocs,
+        avatarUrl,
       },
       otp,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 min from now
@@ -102,6 +104,7 @@ export const finalizeRegistration = async (req, res) => {
       experienceYears,
       availability,
       serviceDocs,
+      avatarUrl,
     } = pending.data;
 
     // encrypt the password
@@ -119,6 +122,7 @@ export const finalizeRegistration = async (req, res) => {
         experienceYears,
         availability,
         serviceDocs,
+        avatarUrl,
       }),
     });
 

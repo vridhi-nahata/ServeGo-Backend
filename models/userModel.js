@@ -64,7 +64,7 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  
+  wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   role:{
       type:String,
       enum:["customer","provider","admin"],
@@ -75,7 +75,8 @@ const userSchema = new mongoose.Schema({
   servicesOffered: [{ type: String, enum: SERVICES, default: undefined }],
   experienceYears: Number,
   availability: String,
-  serviceDocs: [String],
+  serviceDocs: [{ type: String }],
+  avatarUrl: { type: String },
   }, { timestamps: true } 
 );
 
