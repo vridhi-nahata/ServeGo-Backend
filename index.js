@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import authRouter from './routes/authRoute.js';
 import cookieParser from 'cookie-parser';
 import userRouter from './routes/userRoute.js';
+import bookingRoute from './routes/bookingRoute.js';
 
 
 dotenv.config();
@@ -28,6 +29,7 @@ app.get('/', (req, res) => {
 });
 app.use('/api/auth',authRouter);
 app.use('/api/user',userRouter);
+app.use('/api/bookings',bookingRoute);
 
 
 // Connect to MongoDB

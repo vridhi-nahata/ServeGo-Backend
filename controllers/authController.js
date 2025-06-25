@@ -88,13 +88,6 @@ export const finalizeRegistration = async (req, res) => {
     if (pending.otp !== otp)
       return res.json({ success: false, message: "Incorrect OTP" });
 
-    const existingUser = await userModel.findOne({ email });
-    if (existingUser) {
-      await pendingRegistration.deleteOne({ email });
-      return res.json({ success: false, message: "User already exists" });
-    }
-
-
     const {
       name,
       phone,
@@ -158,7 +151,7 @@ export const finalizeRegistration = async (req, res) => {
     await pendingRegistration.deleteOne({ email });
     return res.json({
       success: true,
-      user:newUser,
+      user: newUser,
       message: "Registered successfully",
     });
   } catch (error) {
@@ -179,6 +172,15 @@ export const login = async (req, res) => {
     const user = await userModel.findOne({ email });
     if (!user) {
       return res.json({ success: false, message: "User not registered" });
+    }
+    if (
+      user.role === "provider" &&
+      (!user.servicesOffered || user.servicesOffered.length === 0)
+    ) {
+      return res.json({
+        success: false,
+        message: "Provider must have at least one service to login",
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
