@@ -7,6 +7,7 @@ import authRouter from './routes/authRoute.js';
 import cookieParser from 'cookie-parser';
 import userRouter from './routes/userRoute.js';
 import bookingRoute from './routes/bookingRoute.js';
+import providerRoute from './routes/providerRoute.js';
 
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth',authRouter);
 app.use('/api/user',userRouter);
 app.use('/api/bookings',bookingRoute);
+app.use("/api/provider",providerRoute);
 
 
 // Connect to MongoDB
