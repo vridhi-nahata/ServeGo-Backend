@@ -1,6 +1,8 @@
 import express from "express";
 import Booking from "../models/Booking.js";
 import userAuth from "../middlewares/authMiddleware.js";
+import mongoose from "mongoose";
+
 
 const router = express.Router();
 
@@ -107,8 +109,6 @@ router.get("/booked-slots", async (req, res) => {
         $lte: endOfDay,
       },
     });
-    console.log("Bookings found:", bookings); // 👈 Add this
-
 
     const bookedSlots = bookings.map((b) => ({
       from: b.timeSlot.from,
@@ -116,11 +116,62 @@ router.get("/booked-slots", async (req, res) => {
     }));
     return res.json({
       success: true,
-      bookedSlots, // ← this was probably missing
+      bookedSlots, 
     });
     
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/bookings/provider-requests
+router.get("/provider-requests", userAuth, async (req, res) => {
+  try {
+    console.log("➡️  Provider request hit");
+    console.log("Logged-in user:", req.user);
+
+    const providerId = req.user.id;
+
+    if (!providerId) {
+      console.log("❌ No provider ID found");
+      return res.status(400).json({ success: false, message: "No provider ID" });
+    }
+
+    const bookings = await Booking.find({ provider: providerId })
+      // .populate("customer", "name email avatarUrl")
+      .sort({ createdAt: -1 });
+
+    console.log("✅ Bookings found:", bookings.length);
+    res.json({ success: true, bookings });
+  } catch (err) {
+    console.error("🔥 Error in /provider-requests:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/bookings/:id/status
+router.patch("/:id/status", userAuth, async (req, res) => {
+  const { status, newTimeSlot } = req.body;
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ success: false, message: "Booking not found" });
+
+    // Only provider can update
+    if (booking.provider.toString() !== req.user.id)
+      return res.status(403).json({ success: false, message: "Not authorized" });
+
+    if (status === "update-time" && newTimeSlot) {
+      booking.timeSlot = newTimeSlot;
+      booking.statusHistory.push({ status: "update-time" });
+    } else if (["confirmed", "rejected"].includes(status)) {
+      booking.statusHistory.push({ status });
+    } else {
+      return res.status(400).json({ success: false, message: "Invalid status" });
+    }
+    await booking.save();
+    res.json({ success: true, booking });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
