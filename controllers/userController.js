@@ -3,35 +3,43 @@ import userModel from "../models/userModel.js";
 export const getUserData = async (req, res) => {
   try {
     const userId = req.user.id;
-    const user = await userModel.findById(userId).select("-password -verifyOtp -resetOtp"); // Exclude sensitive fields
+    const user = await userModel
+      .findById(userId)
+      .select("-password -verifyOtp -resetOtp"); // Exclude sensitive fields
 
     if (!user) {
       return res.json({ success: false, message: "User not found" });
     }
 
-    res.json({ success: true, userData:{
+    res.json({
+      success: true,
+      userData: {
         name: user.name,
         isAccountVerified: user.isAccountVerified,
-        wishlist: user.wishlist, 
-    }});
+        wishlist: user.wishlist,
+      },
+    });
   } catch (error) {
     return res.json({ success: false, message: error.message });
   }
-}
+};
 
 // Get all providers for a specific service
 export const getProvidersByService = async (req, res) => {
   const { service } = req.query;
-  if (!service) return res.json({ success: false, message: "Service required" });
+  if (!service)
+    return res.json({ success: false, message: "Service required" });
 
   try {
-    const providers = await userModel.find({
-      role: "provider",
-      servicesOffered: service,
-      // case insensitive match
-      // servicesOffered: { $regex: new RegExp(`^${service}$`, "i") },
-      isAccountVerified: true,
-    }).select("-password -verifyOtp -resetOtp");
+    const providers = await userModel
+      .find({
+        role: "provider",
+        servicesOffered: service,
+        // case insensitive match
+        // servicesOffered: { $regex: new RegExp(`^${service}$`, "i") },
+        isAccountVerified: true,
+      })
+      .select("-password -verifyOtp -resetOtp");
     res.json({ success: true, providers });
   } catch (error) {
     res.json({ success: false, message: error.message });
@@ -41,8 +49,11 @@ export const getProvidersByService = async (req, res) => {
 // Get provider profile
 export const getProviderProfile = async (req, res) => {
   try {
-    const provider = await userModel.findById(req.query.id).select("-password -verifyOtp -resetOtp");
-    if (!provider) return res.json({ success: false, message: "Provider not found" });
+    const provider = await userModel
+      .findById(req.query.id)
+      .select("-password -verifyOtp -resetOtp");
+    if (!provider)
+      return res.json({ success: false, message: "Provider not found" });
     res.json({ success: true, provider });
   } catch (error) {
     res.json({ success: false, message: error.message });
@@ -51,6 +62,8 @@ export const getProviderProfile = async (req, res) => {
 
 // Toggle wishlist
 export const toggleWishlist = async (req, res) => {
+  console.log("🔁 Toggle wishlist called"); // Add this
+
   try {
     const userId = req.user.id; // or req.user._id, depending on your auth middleware
     const { providerId } = req.body;
@@ -74,7 +87,12 @@ export const toggleWishlist = async (req, res) => {
       user.wishlist.splice(index, 1);
       action = "removed";
     }
-    await user.save();
+    try {
+      await user.save({ validateBeforeSave: false });
+      console.log("✅ Wishlist successfully saved");
+    } catch (saveErr) {
+      console.error("❌ Error saving user:", saveErr.message);
+    }
 
     res.json({ success: true, action, wishlist: user.wishlist });
   } catch (error) {
