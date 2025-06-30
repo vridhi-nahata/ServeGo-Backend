@@ -94,15 +94,33 @@ router.get("/booked-slots", async (req, res) => {
   }
 
   try {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
     const bookings = await Booking.find({
       provider: providerId,
-      date: new Date(date),
+      date: {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      },
     });
+    console.log("Bookings found:", bookings); // 👈 Add this
 
-    const bookedSlots = bookings.map((b) => b.timeSlot); // timeSlot = { from, to }
-    res.json({ success: true, bookedSlots });
+
+    const bookedSlots = bookings.map((b) => ({
+      from: b.timeSlot.from,
+      to: b.timeSlot.to,
+    }));
+    return res.json({
+      success: true,
+      bookedSlots, // ← this was probably missing
+    });
+    
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 });
 
