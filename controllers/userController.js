@@ -1,4 +1,5 @@
 import userModel from "../models/userModel.js";
+import Booking from "../models/Booking.js";
 
 export const getUserData = async (req, res) => {
   try {
@@ -98,5 +99,19 @@ export const toggleWishlist = async (req, res) => {
     res.json({ success: true, action, wishlist: user.wishlist });
   } catch (error) {
     res.json({ success: false, message: error.message });
+  }
+};
+
+// Fetch all bookings made by the logged-in customer
+export const getMyBookings = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ customer: req.user.id })
+      .sort({ createdAt: -1 })
+      // .populate("provider", "name avatarUrl email");
+
+    res.json({ success: true, bookings });
+  } catch (err) {
+    console.error("Error fetching my bookings:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
