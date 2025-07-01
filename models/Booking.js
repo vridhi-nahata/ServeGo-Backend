@@ -24,6 +24,10 @@ const bookingSchema = new mongoose.Schema(
       from: { type: String, required: true }, // format "HH:mm"
       to: { type: String, required: true },
     },
+    updatedSlot: {
+      from: { type: String },
+      to: { type: String },
+    },
     notes: {
       type: String,
     },
@@ -31,8 +35,15 @@ const bookingSchema = new mongoose.Schema(
       {
         status: {
           type: String,
-          enum: ["pending", "confirmed", "completed", "cancelled"],
-          required:true,
+          enum: [
+            "pending",
+            "confirmed",
+            "rejected",
+            "update-time",
+            "completed",
+            "cancelled",
+          ],
+          required: true,
         },
         changedAt: { type: Date, default: Date.now },
       },

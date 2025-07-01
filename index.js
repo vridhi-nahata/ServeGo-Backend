@@ -31,7 +31,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth',authRouter);
 app.use('/api/user',userRouter);
 app.use('/api/bookings',bookingRoute);
-app.use("/api/provider",providerRoute);
+app.use('/api/provider',providerRoute);
 
 
 // Connect to MongoDB
