@@ -2,6 +2,7 @@ import express from "express";
 import Booking from "../models/Booking.js";
 import userAuth from "../middlewares/authMiddleware.js";
 import mongoose from "mongoose";
+import dayjs from "dayjs";
 
 const router = express.Router();
 
@@ -193,12 +194,28 @@ router.patch("/:id/customer-response", userAuth, async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking not found" });
 
+        // Only the customer can act
     if (booking.customer.toString() !== req.user.id)
       return res
         .status(403)
         .json({ success: false, message: "Not authorized" });
 
-    if (!["accepted", "rejected"].includes(response))
+       const latestStatus = booking.statusHistory.at(-1)?.status;
+
+//  Block cancellation within 2 hours
+    if (response === "cancelled") {
+  const bookingDateTime = dayjs(`${booking.date} ${booking.timeSlot.from}`, "YYYY-MM-DD HH:mm");
+  const diffMins = bookingDateTime.diff(dayjs(), "minute");
+
+  if (diffMins <= 120 && diffMins >= 0) {
+    return res.status(400).json({
+      success: false,
+      message: "You can't cancel this booking within 2 hours of the start time.",
+    });
+  }
+}
+
+    if (!["accepted", "cancelled"].includes(response))
       return res
         .status(400)
         .json({ success: false, message: "Invalid response" });
@@ -208,11 +225,11 @@ router.patch("/:id/customer-response", userAuth, async (req, res) => {
       booking.timeSlot = booking.updatedSlot; // move proposed time to main slot
     }
 
-    // Clear updatedSlot in both accept/reject
+    // Clear updatedSlot in both accept/cancel
     booking.updatedSlot = undefined;
 
     // Push to statusHistory
-    const newStatus = response === "accepted" ? "confirmed" : "rejected";
+    const newStatus = response === "accepted" ? "confirmed" : "cancelled";
     booking.statusHistory.push({ status: newStatus });
 
     await booking.save();
