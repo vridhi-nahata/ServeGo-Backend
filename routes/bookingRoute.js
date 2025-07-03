@@ -126,13 +126,9 @@ router.get("/booked-slots", async (req, res) => {
 // GET /api/bookings/provider-requests
 router.get("/provider-requests", userAuth, async (req, res) => {
   try {
-    console.log("➡️  Provider request hit");
-    console.log("Logged-in user:", req.user);
-
     const providerId = req.user.id;
 
     if (!providerId) {
-      console.log("❌ No provider ID found");
       return res
         .status(400)
         .json({ success: false, message: "No provider ID" });
@@ -142,10 +138,8 @@ router.get("/provider-requests", userAuth, async (req, res) => {
       // .populate("customer", "name email avatarUrl")
       .sort({ createdAt: -1 });
 
-    console.log("✅ Bookings found:", bookings.length);
     res.json({ success: true, bookings });
   } catch (err) {
-    console.error("🔥 Error in /provider-requests:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -168,7 +162,10 @@ router.patch("/:id/status", userAuth, async (req, res) => {
 
     if (status === "update-time" && newTimeSlot) {
       booking.updatedSlot = newTimeSlot;
-      booking.statusHistory.push({ status: "update-time" });
+      booking.statusHistory.push({
+        status: "update-time",
+        changedAt: new Date(),
+      });
     } else if (["confirmed", "rejected"].includes(status)) {
       booking.statusHistory.push({ status });
     } else {
@@ -176,6 +173,22 @@ router.patch("/:id/status", userAuth, async (req, res) => {
         .status(400)
         .json({ success: false, message: "Invalid status" });
     }
+
+    // Allow completion only if OTP verified
+    if (status === "completed") {
+      if (!booking.otpVerified)
+        return res
+          .status(400)
+          .json({ success: false, message: "OTP not verified yet" });
+
+      booking.statusHistory.push({
+        status: "completed",
+        changedAt: new Date(),
+      });
+      await booking.save();
+      return res.json({ success: true, booking });
+    }
+
     await booking.save();
     res.json({ success: true, booking });
   } catch (err) {
@@ -194,26 +207,30 @@ router.patch("/:id/customer-response", userAuth, async (req, res) => {
         .status(404)
         .json({ success: false, message: "Booking not found" });
 
-        // Only the customer can act
+    // Only the customer can act
     if (booking.customer.toString() !== req.user.id)
       return res
         .status(403)
         .json({ success: false, message: "Not authorized" });
 
-       const latestStatus = booking.statusHistory.at(-1)?.status;
+    const latestStatus = booking.statusHistory.at(-1)?.status;
 
-//  Block cancellation within 2 hours
+    //  Block cancellation within 2 hours
     if (response === "cancelled") {
-  const bookingDateTime = dayjs(`${booking.date} ${booking.timeSlot.from}`, "YYYY-MM-DD HH:mm");
-  const diffMins = bookingDateTime.diff(dayjs(), "minute");
+      const bookingDateTime = dayjs(
+        `${booking.date} ${booking.timeSlot.from}`,
+        "YYYY-MM-DD HH:mm"
+      );
+      const diffMins = bookingDateTime.diff(dayjs(), "minute");
 
-  if (diffMins <= 120 && diffMins >= 0) {
-    return res.status(400).json({
-      success: false,
-      message: "You can't cancel this booking within 2 hours of the start time.",
-    });
-  }
-}
+      if (diffMins <= 120) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "You can't cancel this booking within 2 hours of the start time",
+        });
+      }
+    }
 
     if (!["accepted", "cancelled"].includes(response))
       return res
@@ -230,10 +247,140 @@ router.patch("/:id/customer-response", userAuth, async (req, res) => {
 
     // Push to statusHistory
     const newStatus = response === "accepted" ? "confirmed" : "cancelled";
-    booking.statusHistory.push({ status: newStatus });
+    booking.statusHistory.push({ status: newStatus, changedAt: new Date() });
 
     await booking.save();
 
+    res.json({ success: true, booking });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Generate OTP when booking start time is reached
+router.get("/generate-otp/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const booking = await Booking.findById(id);
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+
+    const status = booking.statusHistory.at(-1)?.status;
+    const now = dayjs();
+    const bookingTime = dayjs(
+      `${dayjs(booking.date).format("YYYY-MM-DD")} ${booking.timeSlot.from}`,
+      "YYYY-MM-DD HH:mm"
+    );
+
+    if (status !== "confirmed" || now.diff(bookingTime, "minute") < 0) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "OTP can only be generated at start time",
+        });
+    }
+
+    if (!booking.otp) {
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
+      booking.otp = otp;
+      await booking.save();
+    }
+
+    res.json({ success: true, otp: booking.otp });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Provider verifies OTP
+router.post("/verify-otp/:id", userAuth, async (req, res) => {
+  const { otp } = req.body;
+  const { id } = req.params;
+
+  try {
+    const booking = await Booking.findById(id);
+
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+
+    if (booking.provider.toString() !== req.user.id) {
+      return res
+        .status(403)
+        .json({ success: false, message: "Only provider can verify OTP" });
+    }
+
+    const trimmedOtp = (otp || "").trim();
+    console.log(booking.otp);
+    console.log(trimmedOtp);
+
+    if (!trimmedOtp) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP is required" });
+    }
+
+    if (booking.otp !== trimmedOtp) {
+      return res.status(400).json({ success: false, message: "Incorrect OTP" });
+    }
+
+    booking.otpVerified = true;
+    // booking.otp = undefined;
+    booking.statusHistory.push({
+      status: "in-progress",
+      changedAt: new Date(),
+    });
+
+    await booking.save();
+
+    return res.json({ success: true, message: "OTP verified" });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+//Patch mark complete
+router.patch("/mark-complete/:id", userAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking)
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
+
+    const userId = req.user.id;
+    if (
+      userId !== booking.customer.toString() &&
+      userId !== booking.provider.toString()
+    ) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    if (!booking.otpVerified) {
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP not yet verified" });
+    }
+
+    if (userId === booking.customer.toString())
+      booking.completedByCustomer = true;
+    if (userId === booking.provider.toString())
+      booking.completedByProvider = true;
+
+    // If both have marked complete, push to statusHistory
+    if (booking.completedByCustomer && booking.completedByProvider) {
+      booking.statusHistory.push({
+        status: "completed",
+        changedAt: new Date(),
+      });
+    }
+
+    await booking.save();
     res.json({ success: true, booking });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

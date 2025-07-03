@@ -31,6 +31,22 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
     },
+    otp: {
+      type: String,
+      default:"",
+    },
+    otpVerified: {
+      type: Boolean,
+      default: false,
+    },
+    completedByCustomer: {
+      type: Boolean,
+      default: false,
+    },
+    completedByProvider: {
+      type: Boolean,
+      default: false,
+    },
     statusHistory: [
       {
         status: {
@@ -40,6 +56,7 @@ const bookingSchema = new mongoose.Schema(
             "confirmed",
             "rejected",
             "update-time",
+            "in-progress",
             "completed",
             "cancelled",
           ],
