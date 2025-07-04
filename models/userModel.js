@@ -40,12 +40,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    location: {
-      type: String,
-    },
     password: {
       type: String,
       required: true,
+    },
+    location: {
+      country: { type: String, required: true },
+      state: { type: String, required: true },
+      city: { type: String, required: true },
+      area: { type: String, required: true },
+      pinCode: { type: String, required: true },
     },
     verifyOtp: {
       type: String,
@@ -73,7 +77,7 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "provider", "admin"],
       required: true,
     },
-
+    avatarUrl: { type: String },
     // Provider-specific fields
     servicesOffered: [{ type: String, enum: SERVICES, default: undefined }],
     experiencePerService: {
@@ -93,7 +97,6 @@ const userSchema = new mongoose.Schema(
       },
     ],
     serviceDocs: [{ type: String }],
-    avatarUrl: { type: String },
   },
   { timestamps: true }
 );
