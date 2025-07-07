@@ -11,17 +11,30 @@ export const sendRegistrationOtp = async (req, res) => {
     email,
     phone,
     password,
-    role,
     location,
+    role,
+    avatarUrl,
     servicesOffered,
     experiencePerService,
     availability,
     serviceDocs,
-    avatarUrl,
   } = req.body;
 
   if (!name || !email || !phone || !password || !role) {
     return res.json({ success: false, message: "Missing required fields" });
+  }
+
+  if (role === "provider") {
+    if (
+      !servicesOffered ||
+      !Array.isArray(servicesOffered) ||
+      servicesOffered.length === 0
+    ) {
+      return res.json({
+        success: false,
+        message: "Provider must offer at least one service",
+      });
+    }
   }
 
   try {
@@ -114,12 +127,12 @@ export const finalizeRegistration = async (req, res) => {
       role,
       location,
       isAccountVerified: true,
+      avatarUrl,
       ...(role === "provider" && {
         servicesOffered,
         experiencePerService,
         availability,
         serviceDocs,
-        avatarUrl,
       }),
     });
 
