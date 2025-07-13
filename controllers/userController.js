@@ -17,6 +17,7 @@ export const getUserData = async (req, res) => {
       userData: {
         name: user.name,
         role: user.role,
+        avatarUrl: user.avatarUrl,
         isAccountVerified: user.isAccountVerified,
         wishlist: user.wishlist,
       },
@@ -128,8 +129,3 @@ export const getMyBookings = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-// Flatten all service names
-// const allServices = user.servicesOffered.flatMap(bundle => bundle.services);
-// filter
-// user.servicesOffered.filter(b => b.category === "Home Services")
