@@ -1,28 +1,4 @@
 import mongoose from "mongoose";
-const SERVICES = [
-  "Home Cleaning",
-  "Physiotherapy",
-  "Massage",
-  "MakeUp",
-  "Hairstyle",
-  "Cooking",
-  "Pest Control",
-  "Painting",
-  "Waterproofing",
-  "AC Repair",
-  "Electrician",
-  "Plumber",
-  "Carpenter",
-  "Smart Device Repair",
-  "IT Support",
-  "Medical Lab Tests",
-  "Nutritionist",
-  "Photography",
-  "Car Cleaning",
-  "Tutoring",
-  "Mounting",
-  "Lifting",
-];
 
 // User Schema
 const userSchema = new mongoose.Schema(
@@ -78,8 +54,15 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     avatarUrl: { type: String },
+
     // Provider-specific fields
-    servicesOffered: [{ type: String, enum: SERVICES, default: undefined }],
+    servicesOffered: [
+      {
+        category: { type: String, required: true },
+        subcategory: { type: String, required: true },
+        services: [{ type: String, required: true }],
+      },
+    ],
     experiencePerService: {
       type: Map,
       of: Number,
@@ -100,8 +83,6 @@ const userSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
-
-export { SERVICES };
 
 // User Model
 const userModel = mongoose.models.user || mongoose.model("user", userSchema);

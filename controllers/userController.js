@@ -16,7 +16,8 @@ export const getUserData = async (req, res) => {
       success: true,
       userData: {
         name: user.name,
-        role:user.role,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
         isAccountVerified: user.isAccountVerified,
         wishlist: user.wishlist,
       },
@@ -31,17 +32,29 @@ export const getProvidersByService = async (req, res) => {
   const { service } = req.query;
   if (!service)
     return res.json({ success: false, message: "Service required" });
+  console.log(
+    "🔍 Searching providers offering service:",
+    JSON.stringify(service)
+  );
 
   try {
     const providers = await userModel
       .find({
         role: "provider",
-        servicesOffered: service,
-        // case insensitive match
-        // servicesOffered: { $regex: new RegExp(`^${service}$`, "i") },
         isAccountVerified: true,
+        // "servicesOffered.services": service, // This matches any bundle containing the service
+        servicesOffered: {
+          $elemMatch: {
+            services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
+          },
+        },
       })
       .select("-password -verifyOtp -resetOtp");
+
+    if (!providers || providers.length === 0) {
+      console.log(" No providers found for service ", JSON.stringify(service));
+    }
+
     res.json({ success: true, providers });
   } catch (error) {
     res.json({ success: false, message: error.message });
@@ -105,9 +118,10 @@ export const toggleWishlist = async (req, res) => {
 // Fetch all bookings made by the logged-in customer
 export const getMyBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ customer: req.user.id })
-      .sort({ createdAt: -1 })
-      // .populate("provider", "name avatarUrl email");
+    const bookings = await Booking.find({ customer: req.user.id }).sort({
+      createdAt: -1,
+    });
+    // .populate("provider", "name avatarUrl email");
 
     res.json({ success: true, bookings });
   } catch (err) {
