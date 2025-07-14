@@ -31,9 +31,13 @@ const bookingSchema = new mongoose.Schema(
     notes: {
       type: String,
     },
+    address: {
+      type: String,
+      required: true,
+    },
     otp: {
       type: String,
-      default:"",
+      default: "",
     },
     otpVerified: {
       type: Boolean,

@@ -1,4 +1,5 @@
 import express from "express";
+import User from "../models/UserModel.js";
 import Booking from "../models/Booking.js";
 import userAuth from "../middlewares/authMiddleware.js";
 import mongoose from "mongoose";
@@ -10,13 +11,13 @@ const router = express.Router();
 router.post("/", userAuth, async (req, res) => {
   try {
     console.log("Booking Request Body:", req.body);
-    const { provider, serviceName, date, timeSlot, notes } = req.body;
+    const { provider, serviceName, date, timeSlot, address, notes } = req.body;
 
     //  Check required fields
-    if (!provider || !serviceName || !date || !timeSlot) {
+    if (!provider || !serviceName || !date || !timeSlot || !address) {
       return res.status(400).json({
         success: false,
-        message: "All fields are required",
+        message: "Missing required fields",
       });
     }
 
@@ -62,6 +63,7 @@ router.post("/", userAuth, async (req, res) => {
       serviceName,
       date,
       timeSlot,
+      address,
       notes,
       statusHistory: [
         {
@@ -135,11 +137,13 @@ router.get("/provider-requests", userAuth, async (req, res) => {
     }
 
     const bookings = await Booking.find({ provider: providerId })
-      // .populate("customer", "name email avatarUrl")
+      .populate({ path: "customer", model: "user", select: "name avatarUrl" }) // ✅ Matches your model name
       .sort({ createdAt: -1 });
 
     res.json({ success: true, bookings });
   } catch (err) {
+    console.error("Error in /provider-requests:", err); // 👈 log error
+
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -276,12 +280,10 @@ router.get("/generate-otp/:id", async (req, res) => {
     );
 
     if (status !== "confirmed" || now.diff(bookingTime, "minute") < 0) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "OTP can only be generated at start time",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "OTP can only be generated at start time",
+      });
     }
 
     if (!booking.otp) {
