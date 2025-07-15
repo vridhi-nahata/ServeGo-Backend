@@ -51,6 +51,28 @@ const bookingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    paymentMethod: {
+      type: String,
+      enum: ["online", "cash", "split"],
+      default: "cash", // or "pending"
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "partial", "paid","failed"],
+      default: "pending",
+    },
+    paymentId: String,
+    paidBy: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        amount: Number,
+        paymentId: String,
+      },
+    ],
+      totalAmount: {
+      type: Number,
+      required: true,
+    },
     statusHistory: [
       {
         status: {

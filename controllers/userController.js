@@ -118,11 +118,11 @@ export const toggleWishlist = async (req, res) => {
 // Fetch all bookings made by the logged-in customer
 export const getMyBookings = async (req, res) => {
   try {
-    const bookings = await Booking.find({ customer: req.user.id }).sort({
-      createdAt: -1,
-    });
-    // .populate("provider", "name avatarUrl email");
-
+    const bookings = await Booking.find({ customer: req.user.id })
+      .populate({ path: "provider", model: "user", select: "name avatarUrl" }) // ⭐ Add this
+      .sort({
+        createdAt: -1,
+      });
     res.json({ success: true, bookings });
   } catch (err) {
     console.error("Error fetching my bookings:", err);

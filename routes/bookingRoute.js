@@ -1,5 +1,5 @@
 import express from "express";
-import User from "../models/UserModel.js";
+import User from "../models/userModel.js";
 import Booking from "../models/Booking.js";
 import userAuth from "../middlewares/authMiddleware.js";
 import mongoose from "mongoose";
@@ -11,7 +11,7 @@ const router = express.Router();
 router.post("/", userAuth, async (req, res) => {
   try {
     console.log("Booking Request Body:", req.body);
-    const { provider, serviceName, date, timeSlot, address, notes } = req.body;
+    const { provider, serviceName, date, timeSlot, address, notes, totalAmount } = req.body;
 
     //  Check required fields
     if (!provider || !serviceName || !date || !timeSlot || !address) {
@@ -65,6 +65,7 @@ router.post("/", userAuth, async (req, res) => {
       timeSlot,
       address,
       notes,
+      totalAmount,
       statusHistory: [
         {
           status: "pending",
@@ -137,13 +138,12 @@ router.get("/provider-requests", userAuth, async (req, res) => {
     }
 
     const bookings = await Booking.find({ provider: providerId })
-      .populate({ path: "customer", model: "user", select: "name avatarUrl" }) // ✅ Matches your model name
+      .populate({ path: "customer", model: "user", select: "name avatarUrl" }) 
       .sort({ createdAt: -1 });
 
     res.json({ success: true, bookings });
   } catch (err) {
-    console.error("Error in /provider-requests:", err); // 👈 log error
-
+    console.error("Error in /provider-requests:", err); 
     res.status(500).json({ success: false, message: err.message });
   }
 });

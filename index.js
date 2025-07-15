@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import userRouter from './routes/userRoute.js';
 import bookingRoute from './routes/bookingRoute.js';
 import providerRoute from './routes/providerRoute.js';
+import paymentRoute from './routes/paymentRoute.js';
 
 
 dotenv.config();
@@ -32,7 +33,7 @@ app.use('/api/auth',authRouter);
 app.use('/api/user',userRouter);
 app.use('/api/bookings',bookingRoute);
 app.use('/api/provider',providerRoute);
-
+app.use("/api/payments", paymentRoute);
 
 // Connect to MongoDB
 mongoose
