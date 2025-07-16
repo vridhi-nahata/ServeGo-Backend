@@ -11,7 +11,7 @@ const router = express.Router();
 router.post("/", userAuth, async (req, res) => {
   try {
     console.log("Booking Request Body:", req.body);
-    const { provider, serviceName, date, timeSlot, address, notes, totalAmount } = req.body;
+    const { provider, serviceName, date, timeSlot, address, notes,unit,units, serviceAmount, platformFee ,totalAmount } = req.body;
 
     //  Check required fields
     if (!provider || !serviceName || !date || !timeSlot || !address) {
@@ -65,6 +65,10 @@ router.post("/", userAuth, async (req, res) => {
       timeSlot,
       address,
       notes,
+      unit,
+      units,
+      serviceAmount,
+      platformFee,
       totalAmount,
       statusHistory: [
         {
@@ -343,6 +347,41 @@ router.post("/verify-otp/:id", userAuth, async (req, res) => {
     return res.json({ success: true, message: "OTP verified" });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/bookings/:id/initiate-cash
+router.patch("/:id/initiate-cash", async (req, res) => {
+  const booking = await Booking.findById(req.params.id);
+  if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+  booking.paymentStatus = "cash_initiated";
+  await booking.save();
+
+  res.json({ message: "Cash payment initiated", booking });
+});
+
+// PATCH /api/bookings/:id/confirm-cash
+router.patch("/:id/confirm-cash", userAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (req.user.id !== booking.provider.toString()) {
+      return res.status(403).json({ message: "Only provider can confirm cash" });
+    }
+
+    booking.paymentStatus = "paid";
+    booking.paymentMethod = "cash";
+
+    await booking.save();
+    res.json({ success: true, booking });
+  } catch (err) {
+    console.error("Cash confirm error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

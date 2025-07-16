@@ -1,15 +1,14 @@
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import authRouter from './routes/authRoute.js';
-import cookieParser from 'cookie-parser';
-import userRouter from './routes/userRoute.js';
-import bookingRoute from './routes/bookingRoute.js';
-import providerRoute from './routes/providerRoute.js';
-import paymentRoute from './routes/paymentRoute.js';
-
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import morgan from "morgan";
+import dotenv from "dotenv";
+import authRouter from "./routes/authRoute.js";
+import cookieParser from "cookie-parser";
+import userRouter from "./routes/userRoute.js";
+import bookingRoute from "./routes/bookingRoute.js";
+import providerRoute from "./routes/providerRoute.js";
+import paymentRoute from "./routes/paymentRoute.js";
 
 dotenv.config();
 
@@ -17,32 +16,35 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-const allowedOrigins=['http://localhost:5173','http://localhost:5174','http://localhost:5175'];
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://localhost:5175",
+];
 
 // Middlewares
-app.use(cors({origin:allowedOrigins,credentials:true}));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
-app.use(morgan('dev'));
+app.use(morgan("dev"));
 app.use(cookieParser());
 
 // API routes
-app.get('/', (req, res) => {
-  res.send('API is running...');
+app.get("/", (req, res) => {
+  res.send("API is running...");
 });
-app.use('/api/auth',authRouter);
-app.use('/api/user',userRouter);
-app.use('/api/bookings',bookingRoute);
-app.use('/api/provider',providerRoute);
+app.use("/api/auth", authRouter);
+app.use("/api/user", userRouter);
+app.use("/api/bookings", bookingRoute);
+app.use("/api/provider", providerRoute);
 app.use("/api/payments", paymentRoute);
 
 // Connect to MongoDB
 mongoose
   .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => {
-    console.log('Connected to MongoDB');
-    app.listen(PORT, () =>{
-    console.log(`Server running on http://localhost:${PORT}`);
-    }); 
+    console.log("Connected to MongoDB");
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
   })
-  .catch((err) => console.error('MongoDB connection failed:', err));
-
+  .catch((err) => console.error("MongoDB connection failed:", err));

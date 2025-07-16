@@ -58,7 +58,7 @@ const bookingSchema = new mongoose.Schema(
     },
     paymentStatus: {
       type: String,
-      enum: ["pending", "partial", "paid","failed"],
+      enum: ["pending", "partial", "paid", "cash_initiated"],
       default: "pending",
     },
     paymentId: String,
@@ -69,7 +69,23 @@ const bookingSchema = new mongoose.Schema(
         paymentId: String,
       },
     ],
-      totalAmount: {
+    unit: {
+      type: String,
+      default: "fixed",
+    },
+    units: {
+      type: Number,
+      default: 1,
+    },
+    serviceAmount: {
+      type: Number,
+      required: true,
+    },
+    platformFee: {
+      type: Number,
+      default: 5,
+    },
+    totalAmount: {
       type: Number,
       required: true,
     },

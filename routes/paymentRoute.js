@@ -34,7 +34,8 @@ router.post("/create-order", async (req, res) => {
 // Verify Signature & Update Booking
 router.post("/verify", async (req, res) => {
   const { response, bookingId, userId, amount } = req.body;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = response;
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    response;
 
   try {
     const generated_signature = crypto
@@ -43,22 +44,28 @@ router.post("/verify", async (req, res) => {
       .digest("hex");
 
     if (generated_signature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: "Invalid Signature" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Signature" });
     }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
     }
-
+    const numericAmount = Number(amount);
     booking.paidBy.push({
       userId,
-      amount,
+      amount: numericAmount,
       paymentId: razorpay_payment_id,
     });
 
     const totalPaid = booking.paidBy.reduce((sum, p) => sum + p.amount, 0);
-    booking.paymentStatus = totalPaid >= booking.totalAmount ? "paid" : "partial";
+    booking.paymentStatus =
+      totalPaid >= booking.totalAmount ? "paid" : "partial";
+    booking.paymentMethod = "online";
 
     await booking.save();
 
