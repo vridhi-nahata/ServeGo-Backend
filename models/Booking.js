@@ -61,6 +61,13 @@ const bookingSchema = new mongoose.Schema(
       enum: ["pending", "partial", "paid", "cash_initiated"],
       default: "pending",
     },
+    paidBy: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        amount: Number,
+        paymentId: String,
+      },
+    ],
     paymentId: String,
     unit: {
       type: String,
@@ -107,6 +114,11 @@ const bookingSchema = new mongoose.Schema(
         changedAt: { type: Date, default: Date.now },
       },
     ],
+    customerFeedback: {
+      rating: { type: Number },
+      review: { type: String },
+      date: { type: Date, default: Date.now },
+    },
   },
   { timestamps: true }
 );
