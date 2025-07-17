@@ -62,13 +62,6 @@ const bookingSchema = new mongoose.Schema(
       default: "pending",
     },
     paymentId: String,
-    paidBy: [
-      {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        amount: Number,
-        paymentId: String,
-      },
-    ],
     unit: {
       type: String,
       default: "fixed",
@@ -89,6 +82,13 @@ const bookingSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    splitLinksSent: [
+      {
+        email: String,
+        link: String,
+        paid: { type: Boolean, default: false },
+      },
+    ],
     statusHistory: [
       {
         status: {
