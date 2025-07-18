@@ -28,38 +28,87 @@ export const getUserData = async (req, res) => {
 };
 
 // Get all providers for a specific service
+// export const getProvidersByService = async (req, res) => {
+//   const { service } = req.query;
+//   if (!service)
+//     return res.json({ success: false, message: "Service required" });
+//   console.log(
+//     "🔍 Searching providers offering service:",
+//     JSON.stringify(service)
+//   );
+
+//   try {
+//     const providers = await userModel
+//       .find({
+//         role: "provider",
+//         isAccountVerified: true,
+//         // "servicesOffered.services": service, // This matches any bundle containing the service
+//         servicesOffered: {
+//           $elemMatch: {
+//             services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
+//           },
+//         },
+//       })
+//       .select("-password -verifyOtp -resetOtp");
+
+//     if (!providers || providers.length === 0) {
+//       console.log(" No providers found for service ", JSON.stringify(service));
+//     }
+
+//     res.json({ success: true, providers });
+//   } catch (error) {
+//     res.json({ success: false, message: error.message });
+//   }
+// };
 export const getProvidersByService = async (req, res) => {
   const { service } = req.query;
   if (!service)
     return res.json({ success: false, message: "Service required" });
-  console.log(
-    "🔍 Searching providers offering service:",
-    JSON.stringify(service)
-  );
+
+  console.log("🔍 Searching providers offering service:", JSON.stringify(service));
 
   try {
-    const providers = await userModel
-      .find({
-        role: "provider",
-        isAccountVerified: true,
-        // "servicesOffered.services": service, // This matches any bundle containing the service
-        servicesOffered: {
-          $elemMatch: {
-            services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
-          },
+    const providers = await userModel.find({
+      role: "provider",
+      isAccountVerified: true,
+      servicesOffered: {
+        $elemMatch: {
+          services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
         },
-      })
-      .select("-password -verifyOtp -resetOtp");
+      },
+    }).select("-password -verifyOtp -resetOtp");
 
-    if (!providers || providers.length === 0) {
-      console.log(" No providers found for service ", JSON.stringify(service));
+    // Get average ratings for each provider
+    const providersWithRatings = await Promise.all(
+      providers.map(async (provider) => {
+        const bookings = await Booking.find({
+          provider: provider._id,
+          "customerFeedback.rating": { $exists: true },
+        }).select("customerFeedback.rating");
+
+        const ratings = bookings.map((b) => b.customerFeedback.rating);
+        const averageRating =
+          ratings.length > 0
+            ? ratings.reduce((acc, r) => acc + r, 0) / ratings.length
+            : null;
+
+        return {
+          ...provider.toObject(),
+          averageRating: averageRating ? averageRating.toFixed(1) : "N/A",
+        };
+      })
+    );
+
+    if (!providersWithRatings.length) {
+      console.log("No providers found for service", JSON.stringify(service));
     }
 
-    res.json({ success: true, providers });
+    res.json({ success: true, providers: providersWithRatings });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
 };
+
 
 // Get provider profile
 export const getProviderProfile = async (req, res) => {
@@ -127,5 +176,22 @@ export const getMyBookings = async (req, res) => {
   } catch (err) {
     console.error("Error fetching my bookings:", err);
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Fetch all reviews of the provider
+export const getProviderReviews = async (req, res) => {
+  try {
+    const reviews = await Booking.find({
+      provider: req.params.providerId,
+      "customerFeedback.rating": { $exists: true },
+    })
+      .populate({ path: "customer", model: "user", select: "name avatarUrl" })
+      .select("customerFeedback customer")
+      .sort({ "customerFeedback.date": -1 });
+
+    res.json({ reviews });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
