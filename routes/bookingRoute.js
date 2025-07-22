@@ -386,13 +386,55 @@ router.patch("/:id/confirm-cash", userAuth, async (req, res) => {
 });
 
 //Patch mark complete
+// router.patch("/mark-complete/:id", userAuth, async (req, res) => {
+//   try {
+//     const booking = await Booking.findById(req.params.id);
+//     if (!booking)
+//       return res
+//         .status(404)
+//         .json({ success: false, message: "Booking not found" });
+
+//     const userId = req.user.id;
+//     if (
+//       userId !== booking.customer.toString() &&
+//       userId !== booking.provider.toString()
+//     ) {
+//       return res.status(403).json({ success: false, message: "Unauthorized" });
+//     }
+
+//     if (!booking.otpVerified) {
+//       return res
+//         .status(400)
+//         .json({ success: false, message: "OTP not yet verified" });
+//     }
+
+//     if (userId === booking.customer.toString())
+//       booking.completedByCustomer = true;
+//     if (userId === booking.provider.toString())
+//       booking.completedByProvider = true;
+
+//     // If both have marked complete, push to statusHistory
+//     if (booking.completedByCustomer && booking.completedByProvider) {
+//       booking.statusHistory.push({
+//         status: "completed",
+//         changedAt: new Date(),
+//       });
+//     }
+
+//     await booking.save();
+//     res.json({ success: true, booking });
+//   } catch (err) {
+//     res.status(500).json({ success: false, message: err.message });
+//   }
+// });
+
+// PATCH /api/bookings/mark-complete/:id
 router.patch("/mark-complete/:id", userAuth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
-    if (!booking)
-      return res
-        .status(404)
-        .json({ success: false, message: "Booking not found" });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
 
     const userId = req.user.id;
     if (
@@ -403,17 +445,26 @@ router.patch("/mark-complete/:id", userAuth, async (req, res) => {
     }
 
     if (!booking.otpVerified) {
-      return res
-        .status(400)
-        .json({ success: false, message: "OTP not yet verified" });
+      return res.status(400).json({ success: false, message: "OTP not yet verified" });
     }
 
-    if (userId === booking.customer.toString())
-      booking.completedByCustomer = true;
-    if (userId === booking.provider.toString())
-      booking.completedByProvider = true;
+    // Log initial values for debugging
+    console.log("Initial completedByCustomer:", booking.completedByCustomer);
+    console.log("Initial completedByProvider:", booking.completedByProvider);
 
-    // If both have marked complete, push to statusHistory
+    // Update completedByCustomer or completedByProvider
+    if (userId === booking.customer.toString()) {
+      booking.completedByCustomer = true;
+    }
+    if (userId === booking.provider.toString()) {
+      booking.completedByProvider = true;
+    }
+
+    // Log updated values for debugging
+    console.log("Updated completedByCustomer:", booking.completedByCustomer);
+    console.log("Updated completedByProvider:", booking.completedByProvider);
+
+    // Check if both have marked the booking as complete
     if (booking.completedByCustomer && booking.completedByProvider) {
       booking.statusHistory.push({
         status: "completed",
@@ -421,9 +472,12 @@ router.patch("/mark-complete/:id", userAuth, async (req, res) => {
       });
     }
 
+    // Save the booking
     await booking.save();
+
     res.json({ success: true, booking });
   } catch (err) {
+    console.error("Error marking booking as complete:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -449,10 +503,13 @@ router.post("/:id/feedback", userAuth, async (req, res) => {
       date: new Date(),
     };
 
+
     booking.markModified("customerFeedback"); // <-- Add this line
 
     booking.completedByCustomer = true;
-
+if (booking.completedByProvider) {
+  booking.statusHistory.push({ status: "completed", changedAt: new Date() });
+}
     await booking.save();
 
     res.status(200).json({ message: "Feedback submitted successfully" });

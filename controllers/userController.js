@@ -65,18 +65,23 @@ export const getProvidersByService = async (req, res) => {
   if (!service)
     return res.json({ success: false, message: "Service required" });
 
-  console.log("🔍 Searching providers offering service:", JSON.stringify(service));
+  console.log(
+    "🔍 Searching providers offering service:",
+    JSON.stringify(service)
+  );
 
   try {
-    const providers = await userModel.find({
-      role: "provider",
-      isAccountVerified: true,
-      servicesOffered: {
-        $elemMatch: {
-          services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
+    const providers = await userModel
+      .find({
+        role: "provider",
+        isAccountVerified: true,
+        servicesOffered: {
+          $elemMatch: {
+            services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
+          },
         },
-      },
-    }).select("-password -verifyOtp -resetOtp");
+      })
+      .select("-password -verifyOtp -resetOtp");
 
     // Get average ratings for each provider
     const providersWithRatings = await Promise.all(
@@ -95,6 +100,7 @@ export const getProvidersByService = async (req, res) => {
         return {
           ...provider.toObject(),
           averageRating: averageRating ? averageRating.toFixed(1) : "N/A",
+          experiencePerService: provider.experiencePerService,
         };
       })
     );
@@ -108,7 +114,6 @@ export const getProvidersByService = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
-
 
 // Get provider profile
 export const getProviderProfile = async (req, res) => {
