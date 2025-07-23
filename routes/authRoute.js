@@ -22,8 +22,6 @@ authRouter.post("/logout", logout);
 
 // Protected routes
 
-// Verify email using OTP Route
-// authRouter.post("/verify-account", userAuth, verifyOtp);
 // Check if user is authenticated
 authRouter.get("/is-auth", userAuth, isAuthenticated);
 

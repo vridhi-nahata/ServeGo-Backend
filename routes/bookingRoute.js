@@ -11,7 +11,19 @@ const router = express.Router();
 router.post("/", userAuth, async (req, res) => {
   try {
     console.log("Booking Request Body:", req.body);
-    const { provider, serviceName, date, timeSlot, address, notes,unit,units, serviceAmount, platformFee ,totalAmount } = req.body;
+    const {
+      provider,
+      serviceName,
+      date,
+      timeSlot,
+      address,
+      notes,
+      unit,
+      units,
+      serviceAmount,
+      platformFee,
+      totalAmount,
+    } = req.body;
 
     //  Check required fields
     if (!provider || !serviceName || !date || !timeSlot || !address) {
@@ -142,12 +154,12 @@ router.get("/provider-requests", userAuth, async (req, res) => {
     }
 
     const bookings = await Booking.find({ provider: providerId })
-      .populate({ path: "customer", model: "user", select: "name avatarUrl" }) 
+      .populate({ path: "customer", model: "user", select: "name avatarUrl" })
       .sort({ createdAt: -1 });
 
     res.json({ success: true, bookings });
   } catch (err) {
-    console.error("Error in /provider-requests:", err); 
+    console.error("Error in /provider-requests:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -371,7 +383,9 @@ router.patch("/:id/confirm-cash", userAuth, async (req, res) => {
     }
 
     if (req.user.id !== booking.provider.toString()) {
-      return res.status(403).json({ message: "Only provider can confirm cash" });
+      return res
+        .status(403)
+        .json({ message: "Only provider can confirm cash" });
     }
 
     booking.paymentStatus = "paid";
@@ -433,7 +447,9 @@ router.patch("/mark-complete/:id", userAuth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Booking not found" });
     }
 
     const userId = req.user.id;
@@ -445,7 +461,9 @@ router.patch("/mark-complete/:id", userAuth, async (req, res) => {
     }
 
     if (!booking.otpVerified) {
-      return res.status(400).json({ success: false, message: "OTP not yet verified" });
+      return res
+        .status(400)
+        .json({ success: false, message: "OTP not yet verified" });
     }
 
     // Log initial values for debugging
@@ -503,13 +521,15 @@ router.post("/:id/feedback", userAuth, async (req, res) => {
       date: new Date(),
     };
 
-
     booking.markModified("customerFeedback"); // <-- Add this line
 
     booking.completedByCustomer = true;
-if (booking.completedByProvider) {
-  booking.statusHistory.push({ status: "completed", changedAt: new Date() });
-}
+    if (booking.completedByProvider) {
+      booking.statusHistory.push({
+        status: "completed",
+        changedAt: new Date(),
+      });
+    }
     await booking.save();
 
     res.status(200).json({ message: "Feedback submitted successfully" });

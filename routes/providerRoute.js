@@ -10,7 +10,9 @@ router.post("/availability", userAuth, async (req, res) => {
     const { availability } = req.body;
 
     if (!availability || !Array.isArray(availability)) {
-      return res.status(400).json({ success: false, message: "Invalid availability format" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid availability format" });
     }
 
     await userModel.findByIdAndUpdate(req.user.id, {

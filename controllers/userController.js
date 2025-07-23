@@ -28,38 +28,6 @@ export const getUserData = async (req, res) => {
 };
 
 // Get all providers for a specific service
-// export const getProvidersByService = async (req, res) => {
-//   const { service } = req.query;
-//   if (!service)
-//     return res.json({ success: false, message: "Service required" });
-//   console.log(
-//     "🔍 Searching providers offering service:",
-//     JSON.stringify(service)
-//   );
-
-//   try {
-//     const providers = await userModel
-//       .find({
-//         role: "provider",
-//         isAccountVerified: true,
-//         // "servicesOffered.services": service, // This matches any bundle containing the service
-//         servicesOffered: {
-//           $elemMatch: {
-//             services: { $elemMatch: { $regex: `^${service}$`, $options: "i" } },
-//           },
-//         },
-//       })
-//       .select("-password -verifyOtp -resetOtp");
-
-//     if (!providers || providers.length === 0) {
-//       console.log(" No providers found for service ", JSON.stringify(service));
-//     }
-
-//     res.json({ success: true, providers });
-//   } catch (error) {
-//     res.json({ success: false, message: error.message });
-//   }
-// };
 export const getProvidersByService = async (req, res) => {
   const { service } = req.query;
   if (!service)
